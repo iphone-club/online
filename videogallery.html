@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>videos</title>
+    <link rel="icon" type="image/png" href="/favicon.jpg">
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #000;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .bg-video {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.0);
+            z-index: 0;
+        }
+
+        .scatter-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;            /* на мобиле прибавим в медиа-запросе */
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .scatter-vid {
+            position: absolute;
+            width: 320px;
+            height: 260px;
+            object-fit: contain;
+            pointer-events: auto;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            background: #000;
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .scatter-vid:active {
+            cursor: grabbing;
+        }
+
+        .scatter-vid:hover {
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        .scatter-vid::-webkit-media-controls-panel {
+            background: rgba(0,0,0,0.6);
+        }
+
+        .back-link, .reset-btn {
+            position: fixed;
+            top: 20px;
+            z-index: 10;
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            background: rgba(0,0,0,0.5);
+            padding: 6px 14px;
+            border-radius: 0px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: background 0.2s;
+            display: inline-block;
+            box-sizing: border-box;
+            height: 30px;
+            line-height: 18px;
+        }
+
+        .back-link {
+            left: 20px;
+        }
+
+        .reset-btn {
+            left: 112px;
+            cursor: pointer;
+            font-family: Arial;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .back-link:hover, .reset-btn:hover {
+            background: rgba(0,0,0,0.8);
+        }
+
+        /* ---------- НОВАЯ ССЫЛКА-КАРТИНКА ВНИЗУ СЛЕВА ---------- */
+        .corner-link {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;                    /* выровнено как кнопки */
+            z-index: 100000;
+            display: block;
+            line-height: 0;
+        }
+        .corner-link img {
+            height: 40px;                  /* десктопная высота, как ты поставил */
+            width: auto;
+            opacity: 0.2;
+            display: block;
+            border: none;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+        .corner-link:hover img {
+            opacity: 1;
+        }
+
+        /* Мобильная адаптация */
+        @media (max-width: 768px) {
+            .scatter-container {
+                height: 150vh;       /* больше места для скролла */
+            }
+
+            .scatter-vid {
+                width: 250px;
+                height: 200px;
+            }
+
+            .back-link, .reset-btn {
+                top: 12px;
+                font-size: 12px;
+                padding: 4px 10px;
+                height: 26px;
+                line-height: 18px;
+            }
+
+            .back-link {
+                left: 18px;
+            }
+
+            .reset-btn {
+                left: 93px;
+            }
+
+            /* мобильная версия corner-link */
+            .corner-link {
+                left: 18px;                /* как у кнопок */
+                bottom: 12px;
+            }
+            .corner-link img {
+                height: 40px;              /* мобильная высота, как ты поставил */
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <video class="bg-video" autoplay muted loop playsinline>
+        <source src="/bg/" type="video/mp4">
+    </video>
+    <div class="overlay"></div>
+
+    <a href="index.html" class="back-link">← Feed</a>
+    <button class="reset-btn" id="resetBtn">Reset</button>
+
+    <!-- НОВАЯ ССЫЛКА-КАРТИНКА ВНИЗУ СЛЕВА -->
+    <a href="https://thelow.drr.ac" target="_blank" class="corner-link">
+        <img src="images/thelow w.png" alt="описание">
+    </a>
+
+    <div class="scatter-container" id="scatterContainer"></div>
+
+    <script>
+        const videoSources = [
+            "bg/comp 2.mp4",
+            "bg/IMG_0769.MOV",
+            "bg/time zones Screen Recording_1_1.mp4",
+            "bg/IMG_0798.MOV",
+            "bg/Moviephotobooth.mp4",
+            "bg/IMG_2669.MOV",
+            "bg/bg video step up.mp4",
+            "bg/11124.mov",
+            "bg/IMG_3439.MOV",
+            "bg/IMG_4848.mov"
+        ];
+
+        const container = document.getElementById('scatterContainer');
+
+        // ========== ТВОИ СТАРТОВЫЕ ПОЗИЦИИ ==========
+        // Десктоп (ширина > 768px) – пиксели при размере видео 320x260
+        const defaultDesktopPositions = [
+            { left: 240, top: 240, z: 1 },
+            { left: 450, top: 100, z: 2 },
+            { left: 500, top: 300, z: 3 },
+            { left: 1090, top: 40, z: 4 },
+            { left: 150, top: 500, z: 5 },
+            { left: 700, top: 200, z: 6 },
+            { left: 900, top: 300, z: 7 },
+            { left: 1090, top: 300, z: 8 },
+            { left: 800, top: 560, z: 9 },
+            { left: 390, top: 560, z: 10 }
+        ];
+
+        // Мобила (ширина <= 768px) – пиксели при размере видео 250x200
+        const defaultMobilePositions = [
+            { left: 35, top: 40, z: 1 },
+            { left: 220, top: 85, z: 2 },
+            { left: 60, top: 230, z: 3 },
+            { left: 140, top: 300, z: 4 },
+            { left: 20, top: 480, z: 5 },
+            { left: 200, top: 440, z: 6 },
+            { left: 20, top: 650, z: 7 },
+            { left: 280, top: 650, z: 8 },
+            { left: 55, top: 860, z: 9 },
+            { left: 150, top: 790, z: 10 }
+        ];
+
+        // ========== ОПРЕДЕЛЕНИЕ РЕЖИМА ==========
+        function isMobile() {
+            return window.innerWidth <= 768;
+        }
+
+        function getStorageKey() {
+            return isMobile() ? 'videoPosMobile' : 'videoPosDesktop';
+        }
+
+        function getDefaultPositions() {
+            return isMobile() ? defaultMobilePositions : defaultDesktopPositions;
+        }
+
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        function loadPositions() {
+            const key = getStorageKey();
+            let stored = JSON.parse(localStorage.getItem(key));
+            if (stored && stored.length === videoSources.length) {
+                return stored;
+            }
+            return getDefaultPositions();
+        }
+
+        let positions = loadPositions();
+
+        function savePositions() {
+            const posArray = [];
+            document.querySelectorAll('.scatter-vid').forEach(v => {
+                posArray.push({
+                    left: parseInt(v.style.left),
+                    top: parseInt(v.style.top),
+                    z: parseInt(v.style.zIndex)
+                });
+            });
+            localStorage.setItem(getStorageKey(), JSON.stringify(posArray));
+        }
+
+        // Очистка позиций (пересоздание видео)
+        function clearAllVideos() {
+            container.innerHTML = '';
+        }
+
+        function createVideos() {
+            clearAllVideos();
+            videoSources.forEach((src, i) => {
+                const pos = positions[i];
+                const video = document.createElement('video');
+                video.src = src;
+                video.autoplay = true;
+                video.muted = true;
+                video.loop = true;
+                video.playsInline = true;
+                video.controls = true;
+                video.className = 'scatter-vid';
+                video.style.left = pos.left + 'px';
+                video.style.top = pos.top + 'px';
+                video.style.zIndex = pos.z;
+                container.appendChild(video);
+
+                let dragging = false, startX, startY, startLeft, startTop;
+                video.addEventListener('pointerdown', (e) => {
+                    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || 
+                        e.target.closest('video::-webkit-media-controls')) {
+                        return;
+                    }
+                    dragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startLeft = video.offsetLeft;
+                    startTop = video.offsetTop;
+                    video.setPointerCapture(e.pointerId);
+                    e.preventDefault();
+                });
+                video.addEventListener('pointermove', (e) => {
+                    if (!dragging) return;
+                    const dx = e.clientX - startX;
+                    const dy = e.clientY - startY;
+                    video.style.left = (startLeft + dx) + 'px';
+                    video.style.top = (startTop + dy) + 'px';
+                });
+                video.addEventListener('pointerup', () => {
+                    if (dragging) {
+                        dragging = false;
+                        savePositions();
+                    }
+                });
+                video.addEventListener('pointercancel', () => {
+                    dragging = false;
+                    savePositions();
+                });
+            });
+        }
+
+        // При смене режима (ресайз) пересоздаём видео с соответствующими позициями
+        let currentMode = isMobile();
+        window.addEventListener('resize', () => {
+            const newMode = isMobile();
+            if (newMode !== currentMode) {
+                currentMode = newMode;
+                positions = loadPositions();  // загружаем позиции для нового режима
+                createVideos();
+            }
+        });
+
+        // Первый запуск
+        createVideos();
+
+        // Кнопка сброса
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            // Удаляем оба ключа, затем перезагружаем страницу
+            localStorage.removeItem('videoPosDesktop');
+            localStorage.removeItem('videoPosMobile');
+            location.reload();
+        });
+    </script>
+</body>
+</html>
