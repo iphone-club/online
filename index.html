@@ -145,6 +145,7 @@
             padding: 20px;
             max-width: 1600px;
             margin: 0 auto;
+            transform: translateZ(0);
         }
 
         @media (min-width: 1200px) {
@@ -156,7 +157,6 @@
 
         @media (max-width: 768px) {
             .feed {
-                transform: translateZ(0);
                 column-count: 3;
                 column-gap: 9px;
                 padding-left: 18px;
@@ -211,10 +211,11 @@
         .post img,
         .post video {
             width: 100%;
+            height: auto;
             display: block;
+            vertical-align: top;
             cursor: pointer;
         }
-
         /* ---------- Лайтбокс ---------- */
         .lightbox {
             display: none;
